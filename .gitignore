@@ -1,0 +1,10 @@
+Dataset/
+runs/
+auto_labels/
+logs/
+*.pt
+*.jpg
+*.jpeg
+*.png
+__pycache__/
+*.pyc
