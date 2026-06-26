@@ -65,6 +65,7 @@ only one frame per group).
 """
 
 import argparse
+import csv
 import json
 import math
 import re
@@ -569,6 +570,27 @@ def track_and_filter(frames_dir, model_path, output_dir, batch_tag,
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
 
+    # Simple, spreadsheet-friendly CSV alongside the full manifest.json --
+    # one row per kept image, image_name + GPS only. This is intentionally
+    # separate from the YOLO .txt label files (which must stay in plain
+    # "class x y w h conf" format for training to work correctly) and is
+    # also separate from manifest.json's full per-box detail, since GPS is
+    # a per-image property, not a per-box one, and a CSV is the simplest
+    # format for joining image -> location for mapping/repair-routing use
+    # outside of this pipeline.
+    metadata_csv_path = output_dir / "metadata.csv"
+    with open(metadata_csv_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["image_name", "latitude", "longitude", "gps_ocr_confidence"])
+        for entry in manifest:
+            gps = entry.get("gps") or {}
+            writer.writerow([
+                entry["image"],
+                gps.get("lat", ""),
+                gps.get("lon", ""),
+                gps.get("ocr_confidence", ""),
+            ])
+
     overall_elapsed = time.time() - overall_start
     log(f"\n{'='*60}")
     log(f"Kept images   : {total_kept_images}")
@@ -583,6 +605,7 @@ def track_and_filter(frames_dir, model_path, output_dir, batch_tag,
     log(f"Images (annotated) : {annotated_out}")
     log(f"Labels (YOLO .txt) : {labels_out}")
     log(f"Manifest (json)    : {manifest_path}")
+    log(f"Metadata (csv, GPS only) : {metadata_csv_path}")
     log(f"NOTE: real_world_length_m is null for every detection -- bbox_diagonal_px")
     log(f"      is a PIXEL measurement only. See script docstring before using it")
     log(f"      as a physical crack length.")
